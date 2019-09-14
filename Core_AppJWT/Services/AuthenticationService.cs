@@ -1,0 +1,84 @@
+﻿using Core_AppJWT.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+
+
+namespace Core_AppJWT.Services
+{
+    /// <summary>
+    /// The followint class is used for the following
+    /// 1. The class will accept Login Details and then Issue the token based on the login Status
+    /// 
+    /// </summary>
+    public class AuthenticationService
+    {
+        IConfiguration configuration;
+        SignInManager<IdentityUser> signInManager;
+        UserManager<IdentityUser> userManager;
+        public AuthenticationService(IConfiguration configuration, 
+            SignInManager<IdentityUser> signInManager,
+            UserManager<IdentityUser> userManager)
+        {
+            this.configuration = configuration;
+            this.signInManager = signInManager;
+            this.userManager = userManager;
+        }
+
+        public bool RegisterUser(RegisterUser register)
+        {
+            bool IsCreated = false;
+            var registerUser = new IdentityUser() { UserName = register.Email, Email = register.Email };
+            var result = userManager.CreateAsync(registerUser, register.Password).Result;
+            if (result.Succeeded)
+            {
+                IsCreated = true;
+            }
+            return IsCreated;
+        }
+
+        public string Authenticate(LoginUser inputModel)
+        {
+            string jwtToken ="";
+            var result =  signInManager.PasswordSignInAsync(inputModel.UserName, inputModel.Password, false, lockoutOnFailure: true).Result;
+            if (result.Succeeded)
+            {
+                // Read the secret key and the expiration from the configuration 
+                var secretKey = Convert.FromBase64String(configuration["JWTSettings:SecretKey"]);
+                var expiryTimeSpan = Convert.ToInt32(configuration["JWTSettings:ExpityInMinuts"]);
+                // logic to get the user role
+                // get the user object based on Email
+                IdentityUser user = new IdentityUser(inputModel.UserName);
+                
+                
+                // set the expity, subject, etc.
+                // note that Issuer and Audience will be null because 
+                // there is no third-party issuer
+                var securityTokenDescription = new SecurityTokenDescriptor()
+                {
+                    Issuer = null,
+                    Audience = null,
+                    Subject = new ClaimsIdentity(new List<Claim> {
+                        new Claim("username",user.Id,ToString()),
+                    }),
+                    Expires = DateTime.UtcNow.AddMinutes(expiryTimeSpan),
+                    IssuedAt = DateTime.UtcNow,
+                    NotBefore = DateTime.UtcNow,
+                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(secretKey), SecurityAlgorithms.HmacSha256Signature) 
+                };
+                // Now generate token using JwtSecurityTokenHandler
+                var jwtHandler = new JwtSecurityTokenHandler();
+                var jwToken = jwtHandler.CreateJwtSecurityToken(securityTokenDescription);
+                jwtToken = jwtHandler.WriteToken(jwToken);
+            }
+
+            return jwtToken;
+        }
+    }
+}
