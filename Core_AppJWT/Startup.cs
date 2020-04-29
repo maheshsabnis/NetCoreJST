@@ -52,15 +52,20 @@ namespace Core_AppJWT
             {
                 options.UseSqlServer(Configuration.GetConnectionString("DataAppContextConnection"));
             });
+
+            // Security Database Connection String
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
 
             // register the authenticaiton service
             services.AddTransient<AuthenticationService>();
-
+            // the AddDefaultIdentity<IdentityUser> will register
+            // 1. SignInManager<IdentityUser> and UserManager<IdentityUser>
+            // classes in the Container
+            // User Creation and Login Process
             services.AddDefaultIdentity<IdentityUser>()
-                 .AddDefaultUI(UIFramework.Bootstrap4)
+                // .AddDefaultUI(UIFramework.Bootstrap4)
                  .AddEntityFrameworkStores<ApplicationDbContext>();
 
 

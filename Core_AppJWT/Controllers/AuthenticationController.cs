@@ -48,6 +48,7 @@ namespace Core_AppJWT.Controllers
                 {
                     Message = token
                 };
+
                 return Ok(ResponseData);
             }
             return BadRequest(ModelState);
